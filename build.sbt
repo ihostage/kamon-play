@@ -16,6 +16,9 @@
 val play26Version     = "2.6.23"
 val play27Version     = "2.7.3"
 
+val lagom16Version      = "1.6.0-M5"
+val lagom14Version      = "1.4.13"
+
 val kamonCore         = "io.kamon"  %%  "kamon-core"                    % "2.0.0"
 val kamonTestkit      = "io.kamon"  %%  "kamon-testkit"                 % "2.0.0"
 val kamonScala        = "io.kamon"  %%  "kamon-scala-future"            % "2.0.0"
@@ -31,11 +34,13 @@ val playLogback       = "com.typesafe.play"       %%  "play-logback"          % 
 val playTest          = "com.typesafe.play"       %%  "play-test"             % play27Version
 val scalatestPlus     = "org.scalatestplus.play"  %%  "scalatestplus-play"    % "4.0.3"
 
+val lagom14Server     = "com.lightbend.lagom"     %% "lagom-server"           % lagom14Version
+val lagom16Server     = "com.lightbend.lagom"     %% "lagom-server"           % lagom16Version
 
 lazy val root = Project("kamon-play", file("."))
   .settings(noPublishing: _*)
   .settings(crossScalaVersions := Nil)
-  .aggregate(instrumentation, commonTests, testsOnPlay26, testsOnPlay27)
+  .aggregate(instrumentation, lagom, commonTests, testsOnPlay26, testsOnPlay27)
 
 
 lazy val instrumentation = Project("instrumentation", file("kamon-play"))
@@ -51,6 +56,20 @@ lazy val instrumentation = Project("instrumentation", file("kamon-play"))
       compileScope(kamonCore, kamonScala, kamonAkkaHttp, kamonCommon) ++
       providedScope(play, playNetty, playAkkaHttp, playWS, kanelaAgent))
 
+lazy val lagom = Project("kamon-lagom", file("kamon-lagom"))
+  .settings(
+    name := "kamon-lagom",
+    bintrayPackage := "kamon-lagom",
+    moduleName := "kamon-lagom",
+    scalaVersion := "2.12.8",
+    crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.0"),
+    libraryDependencies ++= compileScope(kamonCore) ++ {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, scalaMajor)) if scalaMajor == 11 => providedScope(lagom14Server)
+        case _ => providedScope(lagom16Server)
+      }
+    }
+  )
 
 lazy val commonTests = Project("common-tests", file("common-tests"))
   .dependsOn(instrumentation)
